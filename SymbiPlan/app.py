@@ -73,16 +73,18 @@ conn = st.connection("gsheets", type=GSheetsConnection)
 if 'page' not in st.session_state: st.session_state.page = 'Home'
 
 # --- 4. HOME PAGE ---
+# --- 5. THE HOME PAGE ---
+
 if st.session_state.page == 'Home':
-    st.markdown("<h2>SymbiPlan</h2>", unsafe_allow_html=True)
-    
-    col1, col2 = st.columns(2)
-    with col1:
-        if st.button("🔍 SIGNAL FINDER"): st.session_state.page = 'Signal Finder'
-        if st.button("📊 LIVE HEATMAP"): st.session_state.page = 'Heatmap'
-    with col2:
-        if st.button("💰 SMART RECHARGE"): st.session_state.page = 'Recharge'
-        if st.button("📢 REPORT SIGNAL"): st.session_state.page = 'Report'
+    st.markdown("<h2 style='margin-top: 0px;'>SymbiPlan</h2>", unsafe_allow_html=True)
+    if st.button("🔍 SIGNAL FINDER", use_container_width=True): 
+        st.session_state.page = 'Signal Finder'
+    if st.button("📊 LIVE HEATMAP", use_container_width=True): 
+        st.session_state.page = 'Heatmap'
+    if st.button("📢 REPORT SIGNAL", use_container_width=True): 
+        st.session_state.page = 'Report'
+    if st.button("💰 SMART RECHARGE", use_container_width=True): 
+        st.session_state.page = 'Recharge'
 
 # --- 5. SUB PAGES ---
 elif st.session_state.page == 'Signal Finder':
