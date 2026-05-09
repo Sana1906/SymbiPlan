@@ -1,0 +1,39 @@
+company,type,plan_name,price,data_per_day_gb,data_total_gb,validity_days,validity,calls,sms
+Jio,Prepaid,129 Plan,129,,2,28,,Unlimited,100/day
+Jio,Prepaid,299 Plan,299,1.5,,28,,Unlimited,100/day
+Jio,Prepaid,349 Plan,349,2,,28,,Unlimited,100/day
+Jio,Prepaid,449 Plan,449,3,,28,,Unlimited,100/day
+Jio,Prepaid,799 Plan,799,1.5,,84,,Unlimited,100/day
+Jio,Prepaid,1559 Plan,1559,1.5,,336,,Unlimited,100/day
+Jio,Prepaid,3599 Plan,3599,2.5,,365,,Unlimited,100/day
+Jio,Postpaid,399 Plan,399,,75,,Monthly,Unlimited,100
+Jio,Postpaid,599 Plan,599,,100,,Monthly,Unlimited,100
+Airtel,Prepaid,199 Plan,199,,3,28,,Unlimited,100/day
+Airtel,Prepaid,299 Plan,299,1.5,,28,,Unlimited,100/day
+Airtel,Prepaid,349 Plan,349,2,,28,,Unlimited,100/day
+Airtel,Prepaid,449 Plan,449,3,,28,,Unlimited,100/day
+Airtel,Prepaid,859 Plan,859,1.5,,84,,Unlimited,100/day
+Airtel,Prepaid,1799 Plan,1799,,24,365,,Unlimited,100/day
+Airtel,Postpaid,499 Plan,499,,75,,Monthly,Unlimited,100
+Airtel,Postpaid,999 Plan,999,,150,,Monthly,Unlimited,100
+Vi,Prepaid,199 Plan,199,1,,28,,Unlimited,100/day
+Vi,Prepaid,299 Plan,299,1.5,,28,,Unlimited,100/day
+Vi,Prepaid,319 Plan,319,2,,31,,Unlimited,100/day
+Vi,Prepaid,449 Plan,449,3,,28,,Unlimited,100/day
+Vi,Prepaid,859 Plan,859,1.5,,84,,Unlimited,100/day
+Vi,Prepaid,3599 Plan,3599,2,,365,,Unlimited,100/day
+Vi,Prepaid,23 Data Pack,23,,1,1,,NA,NA
+Vi,Prepaid,26 Data Pack,26,,1.5,1,,NA,NA
+Vi,Prepaid,33 Data Pack,33,,2,2,,NA,NA
+Vi,Postpaid,451 Plan,451,,50,,Monthly,Unlimited,100
+Vi,Postpaid,701 Plan,701,,90,,Monthly,Unlimited,100
+BSNL,Prepaid,187 Plan,187,2,,28,,Unlimited,100/day
+BSNL,Prepaid,347 Plan,347,2,,50,,Unlimited,100/day
+BSNL,Prepaid,485 Plan,485,2,,72,,Unlimited,100/day
+BSNL,Prepaid,599 Plan,599,3,,70,,Unlimited,100/day
+BSNL,Prepaid,997 Plan,997,2,,150,,Unlimited,100/day
+BSNL,Prepaid,1499 Plan,1499,,32,300,,Unlimited,100/day
+BSNL,Prepaid,1999 Plan,1999,1.5,,330,,Unlimited,100/day
+BSNL,Prepaid,2399 Plan,2399,2,,365,,Unlimited,100/day
+BSNL,Postpaid,399 Plan,399,,70,,Monthly,Unlimited,100
+BSNL,Postpaid,525 Plan,525,,100,,Monthly,Unlimited,100
