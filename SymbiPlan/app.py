@@ -8,61 +8,34 @@ from streamlit_folium import st_folium
 
 def get_ai_recommendation(df, selected_location):
     try:
-        # Clean columns to remove leading/trailing spaces
         df.columns = df.columns.str.strip()
         location_col = [c for c in df.columns if '70%' in c or 'Location' in c][0]
         operator_col = [c for c in df.columns if 'Operator' in c][0]
         signal_col = [c for c in df.columns if 'Signal Strength' in c][0]
-        
         subset = df[df[location_col] == selected_location]
         if subset.empty: return f"No data for {selected_location} yet."
-        
-        # Ensure signal strength is treated as a number
         subset[signal_col] = pd.to_numeric(subset[signal_col], errors='coerce')
         avg_signals = subset.groupby(operator_col)[signal_col].mean()
         best_op, strength = avg_signals.idxmax(), round(avg_signals.max(), 1)
         return f"AI Analysis: **{best_op}** is strongest at {selected_location} ({strength}/5)."
-    except Exception:
-        return "Signal data analysis error. Please check your signal sheet headers."
+    except: return "Signal data analysis error."
 
 def recommend_data_pack(pricing_df, budget, operator):
     try:
-        # 1. CLEANING: Remove extra spaces and make a lowercase map of columns
         pricing_df.columns = pricing_df.columns.str.strip()
         col_map = {c.lower(): c for c in pricing_df.columns}
+        p_col, o_col, n_col = col_map.get('price'), col_map.get('operator'), col_map.get('plan name')
+        d_col, v_col = col_map.get('data'), col_map.get('validity')
+
+        if not all([p_col, o_col, n_col]): return "Missing columns in sheet."
         
-        # 2. FIND RELEVANT COLUMNS (Price, Operator, Plan Name, Data, Validity)
-        p_col = col_map.get('price')
-        o_col = col_map.get('operator')
-        n_col = col_map.get('plan name')
-        d_col = col_map.get('data')
-        v_col = col_map.get('validity')
-
-        if not all([p_col, o_col, n_col]):
-            return f"Missing required columns. Found: {list(pricing_df.columns)}"
-
-        # 3. FILTERING
-        # Convert Price to numbers in case they are stored as text
         pricing_df[p_col] = pd.to_numeric(pricing_df[p_col], errors='coerce')
-        
-        filtered = pricing_df[
-            (pricing_df[p_col] <= budget) & 
-            (pricing_df[o_col].str.contains(operator, case=False, na=False))
-        ]
+        filtered = pricing_df[(pricing_df[p_col] <= budget) & (pricing_df[o_col].str.contains(operator, case=False, na=False))]
         
         if filtered.empty: return None
-        
-        # Return the most expensive plan that is still under budget
         best_row = filtered.sort_values(by=p_col, ascending=False).iloc[0]
-        
-        return {
-            "name": best_row[n_col],
-            "price": best_row[p_col],
-            "data": best_row[d_col] if d_col else "N/A",
-            "validity": best_row[v_col] if v_col else "N/A"
-        }
-    except Exception as e:
-        return f"Error processing: {str(e)}"
+        return {"name": best_row[n_col], "price": best_row[p_col], "data": best_row[d_col] if d_col else "N/A", "validity": best_row[v_col] if v_col else "N/A"}
+    except: return "Error processing data."
 
 def display_geospatial_map(df):
     st.write("### 📍 Live Campus Signal Hotspots")
@@ -72,7 +45,6 @@ def display_geospatial_map(df):
         df.columns = df.columns.str.strip()
         l_col = [c for c in df.columns if '70%' in c or 'Location' in c][0]
         s_col = [c for c in df.columns if 'Signal Strength' in c][0]
-        df[s_col] = pd.to_numeric(df[s_col], errors='coerce')
         avg = df.groupby(l_col)[s_col].mean().reset_index()
         for _, r in avg.iterrows():
             if r[l_col] in coords:
@@ -87,15 +59,25 @@ st.set_page_config(page_title="SymbiPlan", page_icon="📶", layout="wide")
 st.markdown("""
     <style>
     .stApp { background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%) !important; }
+    
+    /* Force text visibility for labels and paragraphs */
+    .stMarkdown p, .stSelectbox label, .stNumberInput label, div[data-testid="stText"] {
+        color: #1E3A8A !important;
+        font-weight: 600 !important;
+    }
+    
+    /* Header styling */
+    h1, h2, h3 { color: #1E3A8A !important; text-align: center; }
+
+    /* Button styling */
     div.stButton > button {
         width: 100% !important; height: 80px !important;
-        background: rgba(255, 255, 255, 0.7) !important;
+        background: rgba(255, 255, 255, 0.8) !important;
         border-radius: 15px !important; color: #1E3A8A !important;
-        font-weight: 700 !important; border: 1px solid rgba(255,255,255,0.8) !important;
+        font-weight: 700 !important; border: 1px solid rgba(255,255,255,1) !important;
         transition: 0.3s;
     }
     div.stButton > button:hover { background: white !important; transform: scale(1.02); }
-    h2 { color: #1E3A8A !important; text-align: center; margin-bottom: 25px !important; }
     </style>
     """, unsafe_allow_html=True)
 
@@ -104,11 +86,9 @@ SIGNAL_URL = "https://docs.google.com/spreadsheets/d/1FVhzop8SMzmLylTPeqtm2PW2Gx
 TELECOM_URL = "https://docs.google.com/spreadsheets/d/1CaBmy4zwDnW4DkL72Jx8Tjxn3PgPYfN0KCNL-3rS2po/edit?usp=sharing"
 
 conn = st.connection("gsheets", type=GSheetsConnection)
-
 if 'page' not in st.session_state: st.session_state.page = 'Home'
 
 # --- 4. HOME PAGE ---
-
 if st.session_state.page == 'Home':
     st.markdown("<h2 style='margin-top: 0px;'>SymbiPlan</h2>", unsafe_allow_html=True)
     if st.button("🔍 SIGNAL FINDER", use_container_width=True): 
@@ -120,7 +100,7 @@ if st.session_state.page == 'Home':
     if st.button("📢 REPORT SIGNAL", use_container_width=True): 
         st.session_state.page = 'Report'
         
-# --- 5. SUB PAGES ---
+# --- 5. PAGES ---
 elif st.session_state.page == 'Signal Finder':
     if st.button("⬅️ Back"): st.session_state.page = 'Home'
     st.header("🔍 Signal Finder")
@@ -139,30 +119,28 @@ elif st.session_state.page == 'Heatmap':
 
 elif st.session_state.page == 'Recharge':
     if st.button("⬅️ Back"): st.session_state.page = 'Home'
-    st.header("💰 Smart Recharge")
-    st.write("Find the best telecom plan within your budget.")
+    st.markdown("<h2>💰 Smart Recharge</h2>", unsafe_allow_html=True)
+    st.markdown("<p style='text-align: center;'>Find the best telecom plan within your budget.</p>", unsafe_allow_html=True)
     
     try:
         df_plans = conn.read(spreadsheet=TELECOM_URL, ttl=300)
         df_plans.columns = df_plans.columns.str.strip()
         
-        budget = st.number_input("Max Budget (₹)", min_value=10, value=250, step=10)
-        
-        # Dynamically find the Operator column
-        op_col = [c for c in df_plans.columns if c.lower() == 'operator'][0]
-        operator = st.selectbox("Your Operator", df_plans[op_col].unique())
-        
-        if st.button("Recommend Best Plan"):
-            result = recommend_data_pack(df_plans, budget, operator)
-            if result is None:
-                st.warning("No plans found for this budget.")
-            elif isinstance(result, str):
-                st.error(result)
-            else:
-                st.success(f"### Recommended: {result['name']}")
-                st.write(f"**Price:** ₹{result['price']} | **Data:** {result['data']} | **Validity:** {result['validity']}")
+        # Wrapped inputs in a container for better styling
+        with st.container():
+            budget = st.number_input("Max Budget (₹)", min_value=10, value=250, step=10)
+            op_col = [c for c in df_plans.columns if c.lower() == 'operator'][0]
+            operator = st.selectbox("Your Operator", df_plans[op_col].unique())
+            
+            if st.button("Recommend Best Plan"):
+                res = recommend_data_pack(df_plans, budget, operator)
+                if res is None: st.warning("No plans found.")
+                elif isinstance(res, str): st.error(res)
+                else:
+                    st.success(f"### Recommended: {res['name']}")
+                    st.write(f"**Price:** ₹{res['price']} | **Data:** {res['data']} | **Validity:** {res['validity']}")
     except Exception as e:
-        st.error(f"Connection Error: Check spreadsheet and column names. (Error: {e})")
+        st.error("Connection Error. Ensure your Google Sheet is shared 'Anyone with the link can view'.")
 
 elif st.session_state.page == 'Report':
     if st.button("⬅️ Back"): st.session_state.page = 'Home'
