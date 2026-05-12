@@ -174,60 +174,80 @@ elif st.session_state.page == 'Recharge':
         with col3:
             validity_need = st.number_input("📅 Minimum Validity", 1, 365, 28)
 
-        if st.button("🔍 Show Plans"):
+       if st.button("🔍 Show Plans"):
 
-            filtered = df_plans[
-                (df_plans[price_col] <= budget) &
-                (df_plans[validity_col] >= validity_need)
-            ].copy()
+    # Convert numeric columns safely
+    df_plans[price_col] = pd.to_numeric(df_plans[price_col], errors='coerce')
+    df_plans[validity_col] = pd.to_numeric(df_plans[validity_col], errors='coerce')
 
-            # Data filtering
-            if daily_data_col:
-                filtered = filtered[
-                    (filtered[daily_data_col] >= daily_need)
-                ]
+    if daily_data_col:
+        df_plans[daily_data_col] = pd.to_numeric(
+            df_plans[daily_data_col],
+            errors='coerce'
+        ).fillna(0)
 
-            elif total_data_col:
-                filtered = filtered[
-                    ((filtered[total_data_col] / filtered[validity_col]) >= daily_need)
-                ]
+    if total_data_col:
+        df_plans[total_data_col] = pd.to_numeric(
+            df_plans[total_data_col],
+            errors='coerce'
+        ).fillna(0)
 
-            if filtered.empty:
-                st.warning("No matching plans found.")
+    # Initial filter
+    filtered = df_plans[
+        (df_plans[price_col] <= budget) &
+        (df_plans[validity_col] >= validity_need)
+    ].copy()
+
+    # Data requirement filter
+    if daily_data_col:
+        filtered = filtered[
+            (filtered[daily_data_col] >= daily_need)
+        ]
+
+    elif total_data_col:
+        filtered = filtered[
+            (
+                filtered[total_data_col] /
+                filtered[validity_col]
+            ) >= daily_need
+        ]
+
+    # DEBUG
+    st.write("Matching Plans:", len(filtered))
+
+    if filtered.empty:
+        st.warning("❌ No matching plans found.")
+
+    else:
+
+        filtered = filtered.sort_values(by=price_col)
+
+        st.success(f"✅ Found {len(filtered)} matching plans")
+
+        for _, row in filtered.iterrows():
+
+            if daily_data_col and row[daily_data_col] > 0:
+                data_info = f"{row[daily_data_col]} GB/day"
+
+            elif total_data_col and row[total_data_col] > 0:
+                data_info = f"{row[total_data_col]} GB Total"
 
             else:
-                filtered = filtered.sort_values(by=price_col)
+                data_info = "Not Available"
 
-                st.success(f"Found {len(filtered)} matching plans")
+            st.markdown("---")
 
-                for _, row in filtered.iterrows():
+            st.markdown(f"""
+            ### 📱 {row[company_col]}
 
-                    # Data display
-                    data_info = "N/A"
+            📦 **Plan:** {row[plan_col]}
 
-                    if daily_data_col and pd.notna(row[daily_data_col]):
-                        data_info = f"{row[daily_data_col]} GB/day"
+            💰 **Price:** ₹{row[price_col]}
 
-                    elif total_data_col and pd.notna(row[total_data_col]):
-                        data_info = f"{row[total_data_col]} GB Total"
+            📶 **Data:** {data_info}
 
-                    st.markdown("---")
-
-                    st.markdown(f"""
-                    ### 📱 {row[company_col]}
-
-                    📦 **Plan:** {row[plan_col]}
-
-                    💰 **Price:** ₹{row[price_col]}
-
-                    📶 **Data:** {data_info}
-
-                    📅 **Validity:** {row[validity_col]} Days
-                    """)
-
-    except Exception as e:
-        st.error("Connection Error or Column Name Issue")
-        st.exception(e)
+            📅 **Validity:** {row[validity_col]} Days
+            """)
 
 elif st.session_state.page == 'Report':
     if st.button("⬅️ Back"): st.session_state.page = 'Home'
