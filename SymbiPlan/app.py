@@ -135,9 +135,6 @@ elif st.session_state.page == 'Recharge':
         # Clean column names
         df_plans.columns = df_plans.columns.str.strip().str.lower()
 
-        # DEBUG: show actual columns
-        st.write("Detected Columns:", df_plans.columns.tolist())
-
         # Automatically detect columns
         company_col = [c for c in df_plans.columns if 'company' in c or 'operator' in c][0]
         plan_col = [c for c in df_plans.columns if 'plan' in c][0]
