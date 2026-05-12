@@ -123,132 +123,152 @@ elif st.session_state.page == 'Recharge':
         st.session_state.page = 'Home'
 
     st.markdown("<h2>💰 Smart Recharge</h2>", unsafe_allow_html=True)
+
     st.markdown(
         "<p style='text-align:center;'>Find telecom plans based on your needs.</p>",
         unsafe_allow_html=True
     )
 
     try:
+
         # Read sheet
-        df_plans = conn.read(spreadsheet=TELECOM_URL, ttl=300)
+        df_plans = conn.read(
+            spreadsheet=TELECOM_URL,
+            ttl=300
+        )
 
         # Clean column names
-        df_plans.columns = df_plans.columns.str.strip().str.lower()
+        df_plans.columns = (
+            df_plans.columns
+            .str.strip()
+            .str.lower()
+        )
 
-        # Automatically detect columns
-        company_col = [c for c in df_plans.columns if 'company' in c or 'operator' in c][0]
-        plan_col = [c for c in df_plans.columns if 'plan' in c][0]
-        price_col = [c for c in df_plans.columns if 'price' in c or 'amount' in c][0]
-
-        # Daily data column
-        daily_data_col = [c for c in df_plans.columns if 'per day' in c or 'daily' in c]
-
-        # Total data column
-        total_data_col = [c for c in df_plans.columns if 'total' in c and 'gb' in c]
-
-        # Validity column
-        validity_col = [c for c in df_plans.columns if 'validity' in c or 'days' in c][0]
-
-        daily_data_col = daily_data_col[0] if daily_data_col else None
-        total_data_col = total_data_col[0] if total_data_col else None
+        # Detect columns
+        company_col = 'company'
+        plan_col = 'plan_name'
+        price_col = 'price'
+        daily_data_col = 'data_per_day_gb'
+        total_data_col = 'data_total_gb'
+        validity_col = 'validity_days'
 
         # Convert numeric columns
-        df_plans[price_col] = pd.to_numeric(df_plans[price_col], errors='coerce')
-        df_plans[validity_col] = pd.to_numeric(df_plans[validity_col], errors='coerce')
+        df_plans[price_col] = pd.to_numeric(
+            df_plans[price_col],
+            errors='coerce'
+        )
 
-        if daily_data_col:
-            df_plans[daily_data_col] = pd.to_numeric(df_plans[daily_data_col], errors='coerce')
+        df_plans[validity_col] = pd.to_numeric(
+            df_plans[validity_col],
+            errors='coerce'
+        )
 
-        if total_data_col:
-            df_plans[total_data_col] = pd.to_numeric(df_plans[total_data_col], errors='coerce')
-
-        # Inputs
-        col1, col2, col3 = st.columns(3)
-
-        with col1:
-            budget = st.number_input("💵 Budget (₹)", 10, 5000, 300)
-
-        with col2:
-            daily_need = st.number_input("📶 Daily Data Need (GB)", 0.0, 10.0, 1.5)
-
-        with col3:
-            validity_need = st.number_input("📅 Minimum Validity", 1, 365, 28)
-
-       if st.button("🔍 Show Plans"):
-
-    # Convert numeric columns safely
-    df_plans[price_col] = pd.to_numeric(df_plans[price_col], errors='coerce')
-    df_plans[validity_col] = pd.to_numeric(df_plans[validity_col], errors='coerce')
-
-    if daily_data_col:
         df_plans[daily_data_col] = pd.to_numeric(
             df_plans[daily_data_col],
             errors='coerce'
         ).fillna(0)
 
-    if total_data_col:
         df_plans[total_data_col] = pd.to_numeric(
             df_plans[total_data_col],
             errors='coerce'
         ).fillna(0)
 
-    # Initial filter
-    filtered = df_plans[
-        (df_plans[price_col] <= budget) &
-        (df_plans[validity_col] >= validity_need)
-    ].copy()
+        # Inputs
+        col1, col2, col3 = st.columns(3)
 
-    # Data requirement filter
-    if daily_data_col:
-        filtered = filtered[
-            (filtered[daily_data_col] >= daily_need)
-        ]
+        with col1:
+            budget = st.number_input(
+                "💵 Budget (₹)",
+                min_value=10,
+                value=300,
+                step=10
+            )
 
-    elif total_data_col:
-        filtered = filtered[
-            (
-                filtered[total_data_col] /
-                filtered[validity_col]
-            ) >= daily_need
-        ]
+        with col2:
+            daily_need = st.number_input(
+                "📶 Daily Data Need (GB)",
+                min_value=0.0,
+                value=1.5,
+                step=0.5
+            )
 
-    # DEBUG
-    st.write("Matching Plans:", len(filtered))
+        with col3:
+            validity_need = st.number_input(
+                "📅 Minimum Validity (Days)",
+                min_value=1,
+                value=28,
+                step=1
+            )
 
-    if filtered.empty:
-        st.warning("❌ No matching plans found.")
+        # Button
+        if st.button("🔍 Show Plans"):
 
-    else:
+            # Filter plans
+            filtered = df_plans[
+                (df_plans[price_col] <= budget) &
+                (df_plans[validity_col] >= validity_need) &
+                (
+                    (df_plans[daily_data_col] >= daily_need)
+                    |
+                    (
+                        (
+                            df_plans[total_data_col]
+                            /
+                            df_plans[validity_col]
+                        ) >= daily_need
+                    )
+                )
+            ].copy()
 
-        filtered = filtered.sort_values(by=price_col)
+            if filtered.empty:
 
-        st.success(f"✅ Found {len(filtered)} matching plans")
-
-        for _, row in filtered.iterrows():
-
-            if daily_data_col and row[daily_data_col] > 0:
-                data_info = f"{row[daily_data_col]} GB/day"
-
-            elif total_data_col and row[total_data_col] > 0:
-                data_info = f"{row[total_data_col]} GB Total"
+                st.warning("❌ No matching plans found.")
 
             else:
-                data_info = "Not Available"
 
-            st.markdown("---")
+                filtered = filtered.sort_values(
+                    by=price_col
+                )
 
-            st.markdown(f"""
-            ### 📱 {row[company_col]}
+                st.success(
+                    f"✅ Found {len(filtered)} matching plans"
+                )
 
-            📦 **Plan:** {row[plan_col]}
+                for _, row in filtered.iterrows():
 
-            💰 **Price:** ₹{row[price_col]}
+                    # Data display
+                    if row[daily_data_col] > 0:
+                        data_info = (
+                            f"{row[daily_data_col]} GB/day"
+                        )
+                    else:
+                        data_info = (
+                            f"{row[total_data_col]} GB Total"
+                        )
 
-            📶 **Data:** {data_info}
+                    st.markdown("---")
 
-            📅 **Validity:** {row[validity_col]} Days
-            """)
+                    st.markdown(f"""
+                    ### 📱 {row[company_col]}
 
+                    📦 **Plan:** {row[plan_col]}
+
+                    💰 **Price:** ₹{row[price_col]}
+
+                    📶 **Data:** {data_info}
+
+                    📅 **Validity:** {row[validity_col]} Days
+
+                    📞 **Calls:** {row['calls']}
+
+                    ✉️ **SMS:** {row['sms']}
+                    """)
+
+    except Exception as e:
+
+        st.error("Connection Error")
+        st.exception(e)
+        
 elif st.session_state.page == 'Report':
     if st.button("⬅️ Back"): st.session_state.page = 'Home'
     st.link_button("Open Signal Form", "https://docs.google.com/forms/d/e/1FAIpQLSfmsDX0Oo2nWGt6xScoIV-X0_UPHV_qLCsYDnKQ4P07ZN5CYg/viewform")
