@@ -233,6 +233,55 @@ elif st.session_state.page == 'Recharge':
                 st.success(
                     f"✅ Found {len(filtered)} matching plans"
                 )
+            else:
+                # AI Personalized Recommendation
+
+# Create score
+filtered['score'] = (
+    (filtered[daily_data_col] * 40)
+    +
+    (filtered[validity_col] * 2)
+    -
+    (filtered[price_col] * 0.1)
+)
+
+# Best plan
+best_plan = filtered.sort_values(
+    by='score',
+    ascending=False
+).iloc[0]
+
+st.markdown("## 🤖 AI Personalized Recommendation")
+
+st.success(
+    f"""
+    🎯 Based on your budget, data needs and validity preference,
+    the AI recommends:
+
+    ### {best_plan[company_col]} - {best_plan[plan_col]}
+    """
+)
+
+# Data display
+if best_plan[daily_data_col] > 0:
+    best_data = f"{best_plan[daily_data_col]} GB/day"
+else:
+    best_data = f"{best_plan[total_data_col]} GB Total"
+
+st.markdown(f"""
+💰 **Price:** ₹{best_plan[price_col]}
+
+📶 **Data:** {best_data}
+
+📅 **Validity:** {best_plan[validity_col]} Days
+
+📞 **Calls:** {best_plan['calls']}
+
+✉️ **SMS:** {best_plan['sms']}
+""")
+
+st.markdown("---")
+st.markdown("## 📋 All Matching Plans")
 
                 for _, row in filtered.iterrows():
 
