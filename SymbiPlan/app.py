@@ -119,19 +119,24 @@ elif st.session_state.page == 'Heatmap':
 
 elif st.session_state.page == 'Recharge':
 
+    # Back Button
     if st.button("⬅️ Back"):
         st.session_state.page = 'Home'
 
-    st.markdown("<h2>💰 Smart Recharge</h2>", unsafe_allow_html=True)
+    # Heading
+    st.markdown(
+        "<h2 style='text-align:center;'>💰 Smart Recharge</h2>",
+        unsafe_allow_html=True
+    )
 
     st.markdown(
-        "<p style='text-align:center;'>Find telecom plans based on your needs.</p>",
+        "<p style='text-align:center;'>Find the best telecom plans according to your needs.</p>",
         unsafe_allow_html=True
     )
 
     try:
 
-        # Read sheet
+        # Read Google Sheet
         df_plans = conn.read(
             spreadsheet=TELECOM_URL,
             ttl=300
@@ -144,7 +149,7 @@ elif st.session_state.page == 'Recharge':
             .str.lower()
         )
 
-        # Detect columns
+        # Column Names
         company_col = 'company'
         plan_col = 'plan_name'
         price_col = 'price'
@@ -152,7 +157,7 @@ elif st.session_state.page == 'Recharge':
         total_data_col = 'data_total_gb'
         validity_col = 'validity_days'
 
-        # Convert numeric columns
+        # Convert columns to numeric
         df_plans[price_col] = pd.to_numeric(
             df_plans[price_col],
             errors='coerce'
@@ -173,7 +178,7 @@ elif st.session_state.page == 'Recharge':
             errors='coerce'
         ).fillna(0)
 
-        # Inputs
+        # User Inputs
         col1, col2, col3 = st.columns(3)
 
         with col1:
@@ -200,10 +205,10 @@ elif st.session_state.page == 'Recharge':
                 step=1
             )
 
-        # Button
+        # Search Button
         if st.button("🔍 Show Plans"):
 
-            # Filter plans
+            # Filter Plans
             filtered = df_plans[
                 (df_plans[price_col] <= budget) &
                 (df_plans[validity_col] >= validity_need) &
@@ -220,72 +225,71 @@ elif st.session_state.page == 'Recharge':
                 )
             ].copy()
 
+            # No Plans
             if filtered.empty:
 
                 st.warning("❌ No matching plans found.")
 
             else:
 
+                # Sort by price
                 filtered = filtered.sort_values(
                     by=price_col
                 )
 
-                st.success(
-                    f"✅ Found {len(filtered)} matching plans"
+                # AI Score
+                filtered['score'] = (
+                    (filtered[daily_data_col] * 40)
+                    +
+                    (filtered[validity_col] * 2)
+                    -
+                    (filtered[price_col] * 0.1)
                 )
-            else:
-                # AI Personalized Recommendation
 
-# Create score
-filtered['score'] = (
-    (filtered[daily_data_col] * 40)
-    +
-    (filtered[validity_col] * 2)
-    -
-    (filtered[price_col] * 0.1)
-)
+                # Best AI Plan
+                best_plan = filtered.sort_values(
+                    by='score',
+                    ascending=False
+                ).iloc[0]
 
-# Best plan
-best_plan = filtered.sort_values(
-    by='score',
-    ascending=False
-).iloc[0]
+                # Data Display for AI Plan
+                if best_plan[daily_data_col] > 0:
+                    best_data = (
+                        f"{best_plan[daily_data_col]} GB/day"
+                    )
+                else:
+                    best_data = (
+                        f"{best_plan[total_data_col]} GB Total"
+                    )
 
-st.markdown("## 🤖 AI Personalized Recommendation")
+                # AI Recommendation Section
+                st.markdown("## 🤖 AI Personalized Recommendation")
 
-st.success(
-    f"""
-    🎯 Based on your budget, data needs and validity preference,
-    the AI recommends:
+                st.success(f"""
+                🎯 Based on your requirements, the AI recommends:
 
-    ### {best_plan[company_col]} - {best_plan[plan_col]}
-    """
-)
+                ### 📱 {best_plan[company_col]}
 
-# Data display
-if best_plan[daily_data_col] > 0:
-    best_data = f"{best_plan[daily_data_col]} GB/day"
-else:
-    best_data = f"{best_plan[total_data_col]} GB Total"
+                📦 **Plan:** {best_plan[plan_col]}
 
-st.markdown(f"""
-💰 **Price:** ₹{best_plan[price_col]}
+                💰 **Price:** ₹{best_plan[price_col]}
 
-📶 **Data:** {best_data}
+                📶 **Data:** {best_data}
 
-📅 **Validity:** {best_plan[validity_col]} Days
+                📅 **Validity:** {best_plan[validity_col]} Days
 
-📞 **Calls:** {best_plan['calls']}
+                📞 **Calls:** {best_plan['calls']}
 
-✉️ **SMS:** {best_plan['sms']}
-""")
+                ✉️ **SMS:** {best_plan['sms']}
+                """)
 
-st.markdown("---")
-st.markdown("## 📋 All Matching Plans")
+                st.markdown("---")
+                st.markdown("## 📋 All Matching Plans")
 
+                # Display All Matching Plans
                 for _, row in filtered.iterrows():
 
-                    # Data display
+                    # Data Display
                     if row[daily_data_col] > 0:
                         data_info = (
                             f"{row[daily_data_col]} GB/day"
@@ -315,7 +319,7 @@ st.markdown("## 📋 All Matching Plans")
 
     except Exception as e:
 
-        st.error("Connection Error")
+        st.error("⚠️ Connection Error or Invalid Data")
         st.exception(e)
         
 elif st.session_state.page == 'Report':
