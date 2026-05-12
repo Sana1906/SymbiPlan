@@ -118,29 +118,117 @@ elif st.session_state.page == 'Heatmap':
     except: st.error("Failed to load map data.")
 
 elif st.session_state.page == 'Recharge':
-    if st.button("⬅️ Back"): st.session_state.page = 'Home'
+    if st.button("⬅️ Back"):
+        st.session_state.page = 'Home'
+
     st.markdown("<h2>💰 Smart Recharge</h2>", unsafe_allow_html=True)
-    st.markdown("<p style='text-align: center;'>Find the best telecom plan within your budget.</p>", unsafe_allow_html=True)
-    
+    st.markdown(
+        "<p style='text-align: center;'>Find telecom plans based on your budget, daily data need and validity.</p>",
+        unsafe_allow_html=True
+    )
+
     try:
+        # Read Google Sheet
         df_plans = conn.read(spreadsheet=TELECOM_URL, ttl=300)
-        df_plans.columns = df_plans.columns.str.strip()
-        
-        # Wrapped inputs in a container for better styling
+
+        # Clean column names
+        df_plans.columns = df_plans.columns.str.strip().str.lower()
+
+        # Correct column names from your dataset
+        # company
+        # type
+        # plan_name
+        # price
+        # data_per_day_gb
+        # data_total_gb
+        # validity_days
+        # calls
+        # sms
+
         with st.container():
-            budget = st.number_input("Max Budget (₹)", min_value=10, value=250, step=10)
-            op_col = [c for c in df_plans.columns if c.lower() == 'operator'][0]
-            operator = st.selectbox("Your Operator", df_plans[op_col].unique())
-            
-            if st.button("Recommend Best Plan"):
-                res = recommend_data_pack(df_plans, budget, operator)
-                if res is None: st.warning("No plans found.")
-                elif isinstance(res, str): st.error(res)
+
+            col1, col2, col3 = st.columns(3)
+
+            with col1:
+                budget = st.number_input(
+                    "💵 Max Budget (₹)",
+                    min_value=10,
+                    value=300,
+                    step=10
+                )
+
+            with col2:
+                daily_data = st.number_input(
+                    "📶 Daily Data Needed (GB)",
+                    min_value=0.0,
+                    value=1.5,
+                    step=0.5
+                )
+
+            with col3:
+                validity = st.number_input(
+                    "📅 Minimum Validity (Days)",
+                    min_value=1,
+                    value=28,
+                    step=1
+                )
+
+            if st.button("🔍 Show Matching Plans"):
+
+                # Convert columns safely
+                df_plans['price'] = pd.to_numeric(df_plans['price'], errors='coerce')
+                df_plans['data_per_day_gb'] = pd.to_numeric(df_plans['data_per_day_gb'], errors='coerce')
+                df_plans['data_total_gb'] = pd.to_numeric(df_plans['data_total_gb'], errors='coerce')
+                df_plans['validity_days'] = pd.to_numeric(df_plans['validity_days'], errors='coerce')
+
+                # Filter plans
+                filtered = df_plans[
+                    (df_plans['price'] <= budget) &
+                    (df_plans['validity_days'] >= validity) &
+                    (
+                        (df_plans['data_per_day_gb'] >= daily_data) |
+                        (
+                            (df_plans['data_total_gb'] / df_plans['validity_days']) >= daily_data
+                        )
+                    )
+                ].copy()
+
+                if filtered.empty:
+                    st.warning("❌ No plans found matching your requirements.")
+
                 else:
-                    st.success(f"### Recommended: {res['name']}")
-                    st.write(f"**Price:** ₹{res['price']} | **Data:** {res['data']} | **Validity:** {res['validity']}")
+                    # Sort by price
+                    filtered = filtered.sort_values(by='price')
+
+                    st.success(f"✅ Found {len(filtered)} matching plans")
+
+                    for _, row in filtered.iterrows():
+
+                        # Data display logic
+                        if pd.notna(row['data_per_day_gb']):
+                            data_info = f"{row['data_per_day_gb']} GB/day"
+                        else:
+                            data_info = f"{row['data_total_gb']} GB Total"
+
+                        st.markdown("---")
+
+                        st.markdown(f"""
+                        ### 📱 {row['company']} - {row['plan_name']}
+
+                        💰 **Price:** ₹{row['price']}
+
+                        📶 **Data:** {data_info}
+
+                        📅 **Validity:** {int(row['validity_days'])} Days
+
+                        📞 **Calls:** {row['calls']}
+
+                        ✉️ **SMS:** {row['sms']}
+                        """)
+
     except Exception as e:
-        st.error("Connection Error. Ensure your Google Sheet is shared 'Anyone with the link can view'.")
+        st.error("Connection Error. Ensure your Google Sheet is shared as 'Anyone with the link can view'.")
+        st.exception(e)
 
 elif st.session_state.page == 'Report':
     if st.button("⬅️ Back"): st.session_state.page = 'Home'
