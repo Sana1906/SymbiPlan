@@ -83,7 +83,7 @@ st.markdown("""
 
 # --- 3. DATA & NAVIGATION ---
 SIGNAL_URL = "https://docs.google.com/spreadsheets/d/1FVhzop8SMzmLylTPeqtm2PW2GxNbO1eTas4j7nYD__M/edit?usp=sharing"
-TELECOM_URL = "https://docs.google.com/spreadsheets/d/1CaBmy4zwDnW4DkL72Jx8Tjxn3PgPYfN0KCNL-3rS2po/edit?usp=sharing"
+TELECOM_URL = "https://docs.google.com/spreadsheets/d/1TFgF75B7hwHIfSp9XhBwWgvCtMq8xnve81D8k6_dNFA/edit?usp=sharing"
 
 conn = st.connection("gsheets", type=GSheetsConnection)
 if 'page' not in st.session_state: st.session_state.page = 'Home'
@@ -118,116 +118,118 @@ elif st.session_state.page == 'Heatmap':
     except: st.error("Failed to load map data.")
 
 elif st.session_state.page == 'Recharge':
+
     if st.button("⬅️ Back"):
         st.session_state.page = 'Home'
 
     st.markdown("<h2>💰 Smart Recharge</h2>", unsafe_allow_html=True)
     st.markdown(
-        "<p style='text-align: center;'>Find telecom plans based on your budget, daily data need and validity.</p>",
+        "<p style='text-align:center;'>Find telecom plans based on your needs.</p>",
         unsafe_allow_html=True
     )
 
     try:
-        # Read Google Sheet
+        # Read sheet
         df_plans = conn.read(spreadsheet=TELECOM_URL, ttl=300)
 
         # Clean column names
         df_plans.columns = df_plans.columns.str.strip().str.lower()
 
-        # Correct column names from your dataset
-        # company
-        # type
-        # plan_name
-        # price
-        # data_per_day_gb
-        # data_total_gb
-        # validity_days
-        # calls
-        # sms
+        # DEBUG: show actual columns
+        st.write("Detected Columns:", df_plans.columns.tolist())
 
-        with st.container():
+        # Automatically detect columns
+        company_col = [c for c in df_plans.columns if 'company' in c or 'operator' in c][0]
+        plan_col = [c for c in df_plans.columns if 'plan' in c][0]
+        price_col = [c for c in df_plans.columns if 'price' in c or 'amount' in c][0]
 
-            col1, col2, col3 = st.columns(3)
+        # Daily data column
+        daily_data_col = [c for c in df_plans.columns if 'per day' in c or 'daily' in c]
 
-            with col1:
-                budget = st.number_input(
-                    "💵 Max Budget (₹)",
-                    min_value=10,
-                    value=300,
-                    step=10
-                )
+        # Total data column
+        total_data_col = [c for c in df_plans.columns if 'total' in c and 'gb' in c]
 
-            with col2:
-                daily_data = st.number_input(
-                    "📶 Daily Data Needed (GB)",
-                    min_value=0.0,
-                    value=1.5,
-                    step=0.5
-                )
+        # Validity column
+        validity_col = [c for c in df_plans.columns if 'validity' in c or 'days' in c][0]
 
-            with col3:
-                validity = st.number_input(
-                    "📅 Minimum Validity (Days)",
-                    min_value=1,
-                    value=28,
-                    step=1
-                )
+        daily_data_col = daily_data_col[0] if daily_data_col else None
+        total_data_col = total_data_col[0] if total_data_col else None
 
-            if st.button("🔍 Show Matching Plans"):
+        # Convert numeric columns
+        df_plans[price_col] = pd.to_numeric(df_plans[price_col], errors='coerce')
+        df_plans[validity_col] = pd.to_numeric(df_plans[validity_col], errors='coerce')
 
-                # Convert columns safely
-                df_plans['price'] = pd.to_numeric(df_plans['price'], errors='coerce')
-                df_plans['data_per_day_gb'] = pd.to_numeric(df_plans['data_per_day_gb'], errors='coerce')
-                df_plans['data_total_gb'] = pd.to_numeric(df_plans['data_total_gb'], errors='coerce')
-                df_plans['validity_days'] = pd.to_numeric(df_plans['validity_days'], errors='coerce')
+        if daily_data_col:
+            df_plans[daily_data_col] = pd.to_numeric(df_plans[daily_data_col], errors='coerce')
 
-                # Filter plans
-                filtered = df_plans[
-                    (df_plans['price'] <= budget) &
-                    (df_plans['validity_days'] >= validity) &
-                    (
-                        (df_plans['data_per_day_gb'] >= daily_data) |
-                        (
-                            (df_plans['data_total_gb'] / df_plans['validity_days']) >= daily_data
-                        )
-                    )
-                ].copy()
+        if total_data_col:
+            df_plans[total_data_col] = pd.to_numeric(df_plans[total_data_col], errors='coerce')
 
-                if filtered.empty:
-                    st.warning("❌ No plans found matching your requirements.")
+        # Inputs
+        col1, col2, col3 = st.columns(3)
 
-                else:
-                    # Sort by price
-                    filtered = filtered.sort_values(by='price')
+        with col1:
+            budget = st.number_input("💵 Budget (₹)", 10, 5000, 300)
 
-                    st.success(f"✅ Found {len(filtered)} matching plans")
+        with col2:
+            daily_need = st.number_input("📶 Daily Data Need (GB)", 0.0, 10.0, 1.5)
 
-                    for _, row in filtered.iterrows():
+        with col3:
+            validity_need = st.number_input("📅 Minimum Validity", 1, 365, 28)
 
-                        # Data display logic
-                        if pd.notna(row['data_per_day_gb']):
-                            data_info = f"{row['data_per_day_gb']} GB/day"
-                        else:
-                            data_info = f"{row['data_total_gb']} GB Total"
+        if st.button("🔍 Show Plans"):
 
-                        st.markdown("---")
+            filtered = df_plans[
+                (df_plans[price_col] <= budget) &
+                (df_plans[validity_col] >= validity_need)
+            ].copy()
 
-                        st.markdown(f"""
-                        ### 📱 {row['company']} - {row['plan_name']}
+            # Data filtering
+            if daily_data_col:
+                filtered = filtered[
+                    (filtered[daily_data_col] >= daily_need)
+                ]
 
-                        💰 **Price:** ₹{row['price']}
+            elif total_data_col:
+                filtered = filtered[
+                    ((filtered[total_data_col] / filtered[validity_col]) >= daily_need)
+                ]
 
-                        📶 **Data:** {data_info}
+            if filtered.empty:
+                st.warning("No matching plans found.")
 
-                        📅 **Validity:** {int(row['validity_days'])} Days
+            else:
+                filtered = filtered.sort_values(by=price_col)
 
-                        📞 **Calls:** {row['calls']}
+                st.success(f"Found {len(filtered)} matching plans")
 
-                        ✉️ **SMS:** {row['sms']}
-                        """)
+                for _, row in filtered.iterrows():
+
+                    # Data display
+                    data_info = "N/A"
+
+                    if daily_data_col and pd.notna(row[daily_data_col]):
+                        data_info = f"{row[daily_data_col]} GB/day"
+
+                    elif total_data_col and pd.notna(row[total_data_col]):
+                        data_info = f"{row[total_data_col]} GB Total"
+
+                    st.markdown("---")
+
+                    st.markdown(f"""
+                    ### 📱 {row[company_col]}
+
+                    📦 **Plan:** {row[plan_col]}
+
+                    💰 **Price:** ₹{row[price_col]}
+
+                    📶 **Data:** {data_info}
+
+                    📅 **Validity:** {row[validity_col]} Days
+                    """)
 
     except Exception as e:
-        st.error("Connection Error. Ensure your Google Sheet is shared as 'Anyone with the link can view'.")
+        st.error("Connection Error or Column Name Issue")
         st.exception(e)
 
 elif st.session_state.page == 'Report':
